@@ -26,7 +26,8 @@ def tokenize(src):
     Output:
         List of tokens.
     '''
-
+    import re
+    
     # Init output list for tokens
     tokens = [] 
     
