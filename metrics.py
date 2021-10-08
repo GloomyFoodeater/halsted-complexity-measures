@@ -29,20 +29,22 @@ def correct_dict(dictionary):
         elif key == 'for/in(...)':
             take_from_dict(dictionary, '(...)', counter)
             take_from_dict(dictionary, 'in', counter)
-        elif key in ['for(...)', 'while(...)', 'if(...)']:
+        elif key in ['for(...)', 'while(...)', 'if(...)else']:
             take_from_dict(dictionary, '(...)', counter)
         elif key == '...?...:...':
             take_from_dict(dictionary, ':', counter)
         elif key == 'switch(...){...}':
             take_from_dict(dictionary, '(...)', counter)
             take_from_dict(dictionary, '{...}', counter)
-        elif key in ['try{...}', 'catch{...}', 'finally{...}']:
+        elif key in ['try/catch/finally', 'catch', 'finally']:
             take_from_dict(dictionary, '{...}', counter)
         elif key == 'do{...}while(...)':
             take_from_dict(dictionary, 'while(...)', counter)
             take_from_dict(dictionary, '{...}', counter)
         elif key[-5:] == '(...)':
             take_from_dict(dictionary, '(...)', counter)
+        rm_from_dict(dictionary, 'catch')
+        rm_from_dict(dictionary, 'finally')
 
     # Remove not existing operators
     for key, counter in dictionary.copy().items():
@@ -53,26 +55,40 @@ def correct_dict(dictionary):
 class HolstedMeasures:
     def __init__(self, src):
         self._tokens = tokenize(src)
-        print([token.value for token in self._tokens])
         self.operands = {}
         self.operators = {}
-        self._fill_vocabulary()
+        self._parse_block(0)
         correct_dict(self.operators)
 
-    def _fill_vocabulary(self):
-        i = 0
-        while i < len(self._tokens):
-            # Get all assignments from var/let/const statement
+    # Method to parse a block of code
+    def _parse_block(self, i):
+        braces_balance = 1
+
+        # Iterate over tokens while block is open 
+        while braces_balance > 0 and i < len(self._tokens):
+
+            # Change braces balance
+            if self._tokens[i].value == '{':
+                braces_balance += 1
+            elif self._tokens[i].value == '}':
+                braces_balance -= 1
+
+            # Parse var/let/const statements
             if self._tokens[i].value in ['var', 'const', 'let']:
-                i = self._parse_var_statement(i + 1)
+                i = self._parse_var_statement(i)
+                continue
             
-            # Ignore import statements and type assignments
-            if self._tokens[i].value in ['type', 'import']:
+            # Ignore utility statements
+            if self._tokens[i].value in ['type', 'import', 'declare'] or self._tokens[i].value == 'export' and self._tokens[i+1].value in '{*=':
                 while self._tokens[i].value != ';':
                     i += 1
-            # Get all delimiters from function header
+                i += 1
+                continue
+
+            # Parse function expression
             if self._tokens[i].value == 'function':
-                i = self._parse_func_header(i + 1)
+                i = self._parse_function_expression(i)
+                continue
 
             # Delete var/let/const keyword to escape var/let/const statement
             if self._tokens[i].name == 'for/in(...)':
@@ -83,23 +99,51 @@ class HolstedMeasures:
                 put_to_dict(self.operands, self._tokens[i].name)
             elif self._tokens[i].is_operator:
                 put_to_dict(self.operators, self._tokens[i].name)
-            i += 1
 
-    def _parse_func_header(self, i):
-        while self._tokens[i].value != '{':
-            if self._tokens[i].is_operator:
-                put_to_dict(self.operators, self._tokens[i].name)
+            # Skip error variable declaration during catch block
+            if self._tokens[i].value == 'catch' and self._tokens[i + 1].value == '(':
+                i += 3
             i += 1
-        take_from_dict(self.operators, '{...}')
+        
+        #  Return next token after }    
         return i
 
+    # Method to parse function expression
+    def _parse_function_expression(self, i):
+        parentheses_balance = 0
+        
+        # Iterate over parameter list
+        while parentheses_balance > 0 or self._tokens[i].value != '{':
+
+            # Change parentheses balance
+            if self._tokens[i].value == '(':
+                parentheses_balance += 1
+            elif self._tokens[i].value == ')':
+                parentheses_balance -= 1
+            i += 1
+        
+        # Put braces to vocabulary    
+        put_to_dict(self.operators, self._tokens[i].name)
+        i += 1
+        
+        # Parse function body
+        i = self._parse_block(i)
+
+        # Return next token after }
+        return i 
+
+    # Method to parse var/let/const statements
     def _parse_var_statement(self, i):
             identifier = ''
+
+            # Iterate over statement's tokens
             while self._tokens[i].value != ';':
+
+                # Remember variable id and save delimiters
                 if self._tokens[i].type == 4:
-                    identifier = self._tokens[i] # Save new variable
-                elif self._tokens[i].value in [':', ',']:
-                    put_to_dict(self.operators, self._tokens[i].name) # Save delimiter
+                    identifier = self._tokens[i]
+                elif self._tokens[i].value in ':,':
+                    put_to_dict(self.operators, self._tokens[i].name)
 
                 # Check whether there is an initialization
                 if self._tokens[i].value in ':=':
@@ -108,16 +152,24 @@ class HolstedMeasures:
                     while not self._tokens[i].value in '=,;':
                         i += 1
 
-                    # Exit loop if semicolon was found
+                    # Exit loop if semicolon is found
                     if self._tokens[i].value == ';':
-                        break;
+                        break
                     
-                    # Parse expression after =
                     if self._tokens[i].value == '=':
                         put_to_dict(self.operands, identifier.name)
                         put_to_dict(self.operators, self._tokens[i].name)
                         i += 1
+                        
+                        # Parse RValue
                         while not self._tokens[i].value in ';,':
+
+                            # Parse function statement
+                            if self._tokens[i].value == 'function':
+                                i = self._parse_function_expression(i)
+                                continue
+
+                            # Put token to vocabulary
                             if self._tokens[i].is_operand:
                                 put_to_dict(self.operands, self._tokens[i].name)
                             elif self._tokens[i].is_operator:
@@ -128,4 +180,6 @@ class HolstedMeasures:
             
             # Put semicolon to dictionary
             put_to_dict(self.operators, self._tokens[i].name)
-            return i + 1
+
+            # Return next token after ;
+            return i + 1 
