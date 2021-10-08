@@ -78,6 +78,10 @@ class Application(Frame):
 #========================================================================================
 
     def calculate(self):
+        for i in self.table1.get_children():
+            self.table1.delete(i)
+        for i in self.table2.get_children():
+            self.table2.delete(i)
         """ Calculate metrics. """
         tstr = self.notes.get(1.0, END)
         hmetr = metrics.HolstedMeasures(tstr)
