@@ -233,4 +233,4 @@ class HolstedMeasures:
     @property
     def program_volume(self):
         import math
-        return self.program_length * math.log2(self.program_vocabulary)
+        return self.program_length * math.ceil(math.log2(self.program_vocabulary))
