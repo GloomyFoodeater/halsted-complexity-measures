@@ -17,7 +17,7 @@ class Token:
     def is_operator(self):
         is_function = self.type == 3
         is_ts_operator = self.type == 5 or self.value in ['break', 
-        'continue', 'debugger', 'delete', 'do', 'for', 'if', 'else', 'in', 
+        'continue', 'debugger', 'delete', 'do', 'for', 'if', 'in', 
         'instanceof', 'new', 'return', 'switch', 'throw', 'try', 'catch', 
         'finally', 'typeof', 'void', 'while', 'with', 'as', 'yield']
         is_delimiter = self.type == 6
@@ -56,7 +56,7 @@ def tokenize(src):
     patterns.append(r'[a-zA-Z_$][a-zA-Z_$\d]*\s*\(')
     patterns.append(r'[a-zA-Z_$][a-zA-Z_$\d]*')
     patterns.append(r'>>>=|>>>|>>=|===|<<=|!==|\|\||\|=|\^=|\?\?|>>|>=|==|<=|'\
-    r'<<|/=|\.\?|!\.|-=|--|\+=|\+\+|\*=|\*\*|&=|&&|%=|!=|~|\||\^|'\
+    r'<<|/=|\?\.|!\.|-=|--|\+=|\+\+|\*=|\*\*|&=|&&|%=|!=|~|\||\^|'\
     r'\?(?![:)=,])|>|=|<|/|-|\+|\*|&|%|!|\.')
     patterns.append(r';|:|\)|\(|\}|\{|\]|\[|,|=>|\?')
     
@@ -81,6 +81,7 @@ def tokenize(src):
         for i in range(1, len(regexes)):
             match = regexes[i].match(src, pos = p)
             if match:
+
                 # Get found match
                 token_value = match.group(0) 
 
@@ -102,11 +103,11 @@ def tokenize(src):
                 elif token_value == '{':
                     token_name = '{...}'
                 elif token_value == 'if':
-                    token_name = 'if(...)'
+                    token_name = 'if(...)else'
                 elif token_value == 'switch':
                     token_name = 'switch(...){...}'
-                elif token_value in ['try', 'catch', 'finally']:
-                    token_name = token_value + '{...}'
+                elif token_value == 'try':
+                    token_name = 'try/catch/finally'
                 elif i == 3:
                     token_value = token_value[:-1]
                     token_name = token_value + '(...)'
