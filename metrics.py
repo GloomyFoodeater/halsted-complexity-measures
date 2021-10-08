@@ -16,41 +16,6 @@ def take_from_dict(dictionary, key, count = 1):
     else:
         dictionary[key] = -count
 
-def correct_dict(dictionary):
-
-    # Correct complex operators
-    for key, counter in dictionary.copy().items():
-        if key == '(...)':
-            rm_from_dict(dictionary, ')')
-        elif key == '[...]':
-            rm_from_dict(dictionary, ']')
-        elif key == '{...}':
-            rm_from_dict(dictionary, '}')
-        elif key == 'for/in(...)':
-            take_from_dict(dictionary, '(...)', counter)
-            take_from_dict(dictionary, 'in', counter)
-        elif key in ['for(...)', 'while(...)', 'if(...)else']:
-            take_from_dict(dictionary, '(...)', counter)
-        elif key == '...?...:...':
-            take_from_dict(dictionary, ':', counter)
-        elif key == 'switch(...){...}':
-            take_from_dict(dictionary, '(...)', counter)
-            take_from_dict(dictionary, '{...}', counter)
-        elif key in ['try/catch/finally', 'catch', 'finally']:
-            take_from_dict(dictionary, '{...}', counter)
-        elif key == 'do{...}while(...)':
-            take_from_dict(dictionary, 'while(...)', counter)
-            take_from_dict(dictionary, '{...}', counter)
-        elif key[-5:] == '(...)':
-            take_from_dict(dictionary, '(...)', counter)
-        rm_from_dict(dictionary, 'catch')
-        rm_from_dict(dictionary, 'finally')
-
-    # Remove not existing operators
-    for key, counter in dictionary.copy().items():
-        if counter <= 0:
-            del dictionary[key]
-
 # Class for counting Holsted measures
 class HolstedMeasures:
     def __init__(self, src):
@@ -58,7 +23,8 @@ class HolstedMeasures:
         self.operands = {}
         self.operators = {}
         self._parse_block(0)
-        correct_dict(self.operators)
+        self._correct_operators()
+        self._correct_operands()
         self._operands_total, self._operators_total = 0, 0
 
     # Method to parse a block of code
@@ -94,7 +60,12 @@ class HolstedMeasures:
             # Delete var/let/const keyword to escape var/let/const statement
             if self._tokens[i].name == 'for/in(...)':
                 del self._tokens[i + 2] 
-
+            
+            # Take 2 identifiers and 1 : from dictionaries if there is a label
+            if self._tokens[i].value in ['break', 'continue'] and self._tokens[i + 1].value != ';':
+                take_from_dict(self.operands, self._tokens[i + 1].name, 2)
+                take_from_dict(self.operators, ':')
+            
             # Put token to dictionary
             if self._tokens[i].is_operand:
                 put_to_dict(self.operands, self._tokens[i].name)
@@ -185,6 +156,50 @@ class HolstedMeasures:
             # Return next token after ;
             return i + 1 
     
+    # Method to correct operators
+    def _correct_operators(self):
+
+        # Correct complex operators
+        for key, counter in self.operators.copy().items():
+            if key == '(...)':
+                rm_from_dict(self.operators, ')')
+            elif key == '[...]':
+                rm_from_dict(self.operators, ']')
+            elif key == '{...}':
+                rm_from_dict(self.operators, '}')
+            elif key == 'for/in(...)':
+                take_from_dict(self.operators, '(...)', counter)
+                take_from_dict(self.operators, 'in', counter)
+            elif key in ['for(...)', 'while(...)', 'if(...)else']:
+                take_from_dict(self.operators, '(...)', counter)
+            elif key == '...?...:...':
+                take_from_dict(self.operators, ':', counter)
+            elif key == 'switch(...){...}':
+                take_from_dict(self.operators, '(...)', counter)
+                take_from_dict(self.operators, '{...}', counter)
+            elif key in ['try/catch/finally', 'catch', 'finally']:
+                take_from_dict(self.operators, '{...}', counter)
+            elif key == 'do{...}while(...)':
+                take_from_dict(self.operators, 'while(...)', counter)
+                take_from_dict(self.operators, '{...}', counter)
+            elif key[-5:] == '(...)':
+                take_from_dict(self.operators, '(...)', counter)
+            rm_from_dict(self.operators, 'catch')
+            rm_from_dict(self.operators, 'finally')
+
+        # Remove not existing operators
+        for key, counter in self.operators.copy().items():
+            if counter <= 0:
+                del self.operators[key]
+    
+    # Method to correct operands
+    def _correct_operands(self):
+
+        # Remove not existing operands
+        for key, counter in self.operands.copy().items():
+            if counter <= 0:
+                del self.operands[key]
+
     @property
     def operands_vocabulary(self):
         return len(self.operands)
