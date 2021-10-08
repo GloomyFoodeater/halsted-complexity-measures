@@ -59,6 +59,7 @@ class HolstedMeasures:
         self.operators = {}
         self._parse_block(0)
         correct_dict(self.operators)
+        self._operands_total, self._operators_total = 0, 0
 
     # Method to parse a block of code
     def _parse_block(self, i):
@@ -183,3 +184,38 @@ class HolstedMeasures:
 
             # Return next token after ;
             return i + 1 
+    
+    @property
+    def operands_vocabulary(self):
+        return len(self.operands)
+    
+    @property
+    def operators_vocabulary(self):
+        return len(self.operators)
+    
+    @property
+    def operands_total(self):  
+        if self._operands_total == 0:
+            for key, occurence_count in self.operands.items():
+                self._operands_total += occurence_count
+        return self._operands_total
+        
+    @property
+    def operators_total(self):   
+        if self._operators_total == 0:
+            for key, occurence_count in self.operators.items():
+                self._operators_total += occurence_count
+        return self._operators_total
+        
+    @property
+    def program_vocabulary(self):
+        return self.operands_vocabulary + self.operators_vocabulary
+        
+    @property
+    def program_length(self):
+        return self.operands_total + self.operators_total
+        
+    @property
+    def program_volume(self):
+        import math
+        return self.program_length * math.log2(self.program_vocabulary)
