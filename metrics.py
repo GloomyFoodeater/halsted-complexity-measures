@@ -170,7 +170,7 @@ class HolstedMeasures:
             elif key == 'for/in(...)':
                 take_from_dict(self.operators, '(...)', counter)
                 take_from_dict(self.operators, 'in', counter)
-            elif key in ['for(...)', 'while(...)', 'if(...)else']:
+            elif key in ['for(...;...;...)', 'while(...)', 'if(...)else']:
                 take_from_dict(self.operators, '(...)', counter)
             elif key == '...?...:...':
                 take_from_dict(self.operators, ':', counter)
@@ -233,4 +233,4 @@ class HolstedMeasures:
     @property
     def program_volume(self):
         import math
-        return self.program_length * math.ceil(math.log2(self.program_vocabulary))
+        return math.ceil(self.program_length * math.log2(self.program_vocabulary))
