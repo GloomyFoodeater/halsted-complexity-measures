@@ -17,7 +17,7 @@ def take_from_dict(dictionary, key, count = 1):
         dictionary[key] = -count
 
 # Class for counting Holsted measures
-class HolstedMeasures:
+class HalsteadMeasures:
     def __init__(self, src):
         self._tokens = tokenize(src)
         self.operands = {}
